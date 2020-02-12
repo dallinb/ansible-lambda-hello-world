@@ -16,7 +16,7 @@ platforms:
   - name: localstack
     env:
       DEFAULT_REGION: "eu-west-2"
-      LOCALSTACK_API_KEY: ${LOCALSTACK_API_KEY}
+      LOCALSTACK_API_KEY: "${LOCALSTACK_API_KEY}"
       LOCALSTACK_DEBUG: "1"
       LOCALSTACK_DOCKER_HOST: "unix:///var/run/docker.sock"
       LOCALSTACK_HOSTNAME: localhost
