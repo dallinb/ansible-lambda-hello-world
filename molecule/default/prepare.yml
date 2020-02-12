@@ -1,0 +1,24 @@
+---
+- name: Wait for Localstack Services to Start
+
+  hosts: localstack
+
+  remote_user: root
+
+  become: no
+
+  gather_facts: no
+
+  tasks:
+
+    - name: Wait for Localstack IAM
+      wait_for:
+        port: 4593
+
+    - name: Wait for Localstack Lambda
+      wait_for:
+        port: 4574
+
+    - name: Wait for Localstack S3
+      wait_for:
+        port: 4572

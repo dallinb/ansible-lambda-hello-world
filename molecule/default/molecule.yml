@@ -1,0 +1,77 @@
+---
+dependency:
+  name: galaxy
+
+driver:
+  name: docker
+
+lint:
+  name: yamllint
+  options:
+    config-data:
+      ignore: sam-app/.aws-sam/
+
+
+platforms:
+  - name: localstack
+    env:
+      DEFAULT_REGION: "eu-west-2"
+      LOCALSTACK_API_KEY: ${LOCALSTACK_API_KEY}
+      LOCALSTACK_DEBUG: "1"
+      LOCALSTACK_DOCKER_HOST: "unix:///var/run/docker.sock"
+      LOCALSTACK_HOSTNAME: localhost
+      LOCALSTACK_HOSTNAME_EXTERNAL: localhost
+      LOCALSTACK_LAMBDA_EXECUTER: docker-reuse
+      LOCALSTACK_LAMBDA_REMOTE_DOCKER: "false"
+      LOCALSTACK_PORT_EDGE_HTTP: "80"
+      LOCALSTACK_SERVICES: "edge,iam,lambda,s3"
+      LOCALSTACK_START_WEB: "1"
+    image: localstack/localstack:0.10.6
+    privileged: True
+    published_ports:
+      - 0.0.0.0:80:80/tcp      # Edge (Localstack Pro only)
+      - 0.0.0.0:4572:4572/tcp  # S3
+      - 0.0.0.0:4574:4574/tcp  # Lambda
+      - 0.0.0.0:4593:4593/tcp  # IAM
+      - 0.0.0.0:8080:8080/tcp  # Web Console
+    volumes:
+      - "/tmp/localstack:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+provisioner:
+  name: ansible
+
+  env:
+    AWS_ACCESS_KEY_ID: "abc123"
+    AWS_DEFAULT_REGION: "eu-west-2"
+    AWS_SECRET_ACCESS_KEY: "/dev/null"
+
+  inventory:
+    group_vars:
+      all:
+        ansible_python_interpreter: python3
+        aws_region: "eu-west-2"
+        iam_url: http://localhost:4593
+        s3_url: http://localhost:4572
+        lambda_url: http://localhost:4574
+
+  lint:
+    name: ansible-lint
+
+  log: True
+
+  options:
+    tags: ${ANSIBLE_TAGS-all}
+    v: 1
+
+  playbooks:
+    converge: ../../site.yml
+
+verifier:
+  name: testinfra
+
+  lint:
+    name: flake8
+
+  options:
+    v: 1

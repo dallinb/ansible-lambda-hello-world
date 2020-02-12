@@ -1,0 +1,69 @@
+---
+- name: Deploy Lambda
+
+  hosts: localhost
+
+  become: no
+
+  gather_facts: no
+
+  vars:
+    lambda_ex_role:
+      Version: "2012-10-17"
+      Statement:
+        -
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: "sts:AssumeRole"
+
+  pre_tasks:
+    - name: Gather Minimum Facts
+      setup:
+        gather_subset:
+          - '!all'
+          - '!any'
+          - min
+
+    - name: Make a Note of the Playbook Start Time
+      set_fact:
+        playbook_start_time: "{{ ansible_facts['date_time']['iso8601'] }}"
+
+  tasks:
+    - name: Create IAM Role
+      iam_role:
+        name: "lambda-ex"
+        assume_role_policy_document: "{{ lambda_ex_role | to_json }}"
+        description: Role for the HelloWorld Lambda
+        ec2_url: "{{ iam_url }}"
+      register: iam_role_result
+
+    - name: Create S3 Bucket
+      s3_bucket:
+        name: mys3bucket
+        s3_url: "{{ s3_url }}"
+
+    - name: Upload Lambda Package to S3
+      aws_s3:
+        bucket: mys3bucket
+        object: /lambdas/HelloWorldFunction.zip
+        overwrite: different
+        src: "{{ playbook_dir }}/dist/HelloWorldFunction.zip"
+        s3_url: "{{ s3_url }}"
+        mode: put
+
+    - name: Create Lambda Function
+      lambda:
+        name: HelloWorld
+        description: HelloWorld Lambda Function
+        ec2_url: "{{ lambda_url }}"
+        handler: app.lambda_handler
+        memory_size: 128
+        region: "{{ aws_region }}"
+        s3_bucket: mys3bucket
+        s3_key: lambdas/HelloWorldFunction.zip
+        role: "{{ iam_role_result['arn'] }}"
+        runtime: python3.7
+        timeout: 3
+      register: lambda_result
+      changed_when: "lambda_result['configuration']['last_modified'] > playbook_start_time"
